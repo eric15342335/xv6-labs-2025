@@ -61,5 +61,46 @@ void
 memdump(char *fmt, char *data)
 {
   // Your code here.
-
+  //processes fmt until we hit null terminator
+  while (fmt // checks null ptr
+    && *fmt // checks \0
+    ) {
+    switch (*fmt++) {
+      case 'i':
+        printf("%d", *(int*) data);
+        data += sizeof(int);
+        break;
+      case 'p':
+        printf("%lx", *(uint64*) data);
+        data += sizeof(uint64);
+        break;
+      case 'h':
+        printf("%d", *(uint16*) data);
+        /*
+        question: why %d instead of %x;
+        ans: since %d is for decimal, %x is for hex display format.
+          program reads 16 bits of data in "*(uint16*) data".
+          printf format string does not controls the output
+        */
+        data += sizeof(uint16);
+        break;
+      case 'c':
+        printf("%c", *data);
+        data += sizeof(char);
+        break;
+      case 's': {// 64-bit pointer to a C string, print the string
+        printf("%s", (char*) *((uint64*) data));
+        data += sizeof(uint64);
+        break;
+      }
+      case 'S':
+        printf("%s", data);
+        while(*(data++))
+          ;
+        break;
+      default:
+        break;
+    }
+    printf("\n");
+  }
 }
