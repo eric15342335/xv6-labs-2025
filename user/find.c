@@ -40,7 +40,12 @@ find(char *path, char *filename, void (*callback)(char*))
 
   switch(st.type){
   case T_DEVICE:
+    close(fd);
+    break;
   case T_FILE:
+    // close file descriptors before child process creation copies it!
+    // otherwise, 1) waste memory 2) need manual cleanup/close fd
+    close(fd);
     execifmatch(path, filename, callback);
     break;
 
@@ -68,9 +73,9 @@ find(char *path, char *filename, void (*callback)(char*))
       p[DIRSIZ] = 0; // \0 terminate the string manually, 0-indexing
       find(buf, filename, callback);
     }
+    close(fd);
     break;
   }
-  close(fd);
 }
 
 char **exec_argv;
