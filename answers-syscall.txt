@@ -1,0 +1,89 @@
+## Looking at the backtrace output, which function called syscall? 
+
+The usertrap() at kernel/trap.c:68 called syscall.
+
+## What is the value of p->trapframe->a7 and what does that value represent? (Hint: look at user/init.c, the first user program xv6 starts, and its compiled assembly user/init.asm.) 
+
+The value is 15.
+
+According to `init.asm`:
+
+```
+00000000000003c6 <open>:
+.global open
+open:
+ li a7, SYS_open
+ 3c6:	48bd                	li	a7,15
+ ecall
+ 3c8:	00000073          	ecall
+ ret
+ 3cc:	8082                	ret
+```
+
+The value represents the system call number for the `open` system call in xv6.
+
+Since user/init.c invokes the open system call, the system call number 15 is loaded into register a7.
+
+The ecall instruction causes a transition from user mode to supervisor mode.
+
+The user registers, including a7, are saved in the trapframe, allowing the kernel's syscall() function to read the system call number and execute the corresponding system call.
+
+## What was the previous mode that the CPU was in?
+
+The sstatus register (supervisor status register) value is 0x200000022, according to riscv.h, the SPP (Supervisor Previous Privilege) bit is bit 8:
+
+```
+// Supervisor Status Register, sstatus
+
+#define SSTATUS_SPP (1L << 8)  // Previous mode, 1=Supervisor, 0=User
+#define SSTATUS_SPIE (1L << 5) // Supervisor Previous Interrupt Enable
+#define SSTATUS_UPIE (1L << 4) // User Previous Interrupt Enable
+#define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
+#define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
+```
+
+And hence the previous mode was user mode, as the SPP bit is 0.
+
+## Write down the assembly instruction the kernel is panicing at. Which register corresponds to the variable num?
+
+From the panic message, we saw:
+
+```
+hart 1 starting
+hart 2 starting
+scause=0xd sepc=0x80001cda stval=0x0
+panic: kerneltrap
+```
+
+Looking at the disassembly of syscall() in kernel/syscall.c, we see:
+```
+void
+syscall(void)
+{
+    80001cca:	1101                	addi	sp,sp,-32
+    80001ccc:	ec06                	sd	ra,24(sp)
+    80001cce:	e822                	sd	s0,16(sp)
+    80001cd0:	e426                	sd	s1,8(sp)
+    80001cd2:	1000                	addi	s0,sp,32
+  int num;
+  struct proc *p = myproc();
+    80001cd4:	89cff0ef          	jal	80000d70 <myproc>
+    80001cd8:	84aa                	mv	s1,a0
+
+  //num = p->trapframe->a7;
+  num = * (int *) 0;
+    80001cda:	00002683          	lw	a3,0(zero) # 0 <_entry-0x80000000>
+```
+
+From the last line, we know that the assembly instruction the kernel is panicking at is `lw a3,0(zero)`, which corresponds to the line `num = * (int *) 0;` in the C code.
+
+Register `a3` corresponds to the variable `num`.
+
+## Why does the kernel crash? Hint: look at figure 3-3 in the text; is address 0 mapped in the kernel address space? Is that confirmed by the value in scause above? (See description of scause in RISC-V privileged instructions)
+
+0x0 memory address is not a valid virtual address. It is not being mapped to any of the physical address space.
+Hence, accessing address 0x0 (via "lw	a3,0(zero)") will cause a page fault and crash the kernel.
+
+## What is the name of the process that was running when the kernel paniced? What is its process id (pid)? 
+
+process name is "init", with PID 1.

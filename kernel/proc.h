@@ -104,4 +104,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  
+  int syscall_mask;            // Mask for interpose system call, inherted from parent process
+  // 1 means the system call is disallowed, 0 means the system call is allowed
+  char syscall_allowed_path[MAXPATH];         // allowed paths for open/exec calls even if they are disallowed by the syscall_mask
 };

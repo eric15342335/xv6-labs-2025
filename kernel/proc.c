@@ -287,6 +287,11 @@ kfork(void)
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
+  // Copy sandbox policy before the child is RUNNABLE.
+  np->syscall_mask = p->syscall_mask;
+  safestrcpy(np->syscall_allowed_path, p->syscall_allowed_path,
+             sizeof(np->syscall_allowed_path));
+
   pid = np->pid;
 
   release(&np->lock);
