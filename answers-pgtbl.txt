@@ -1,0 +1,3 @@
+The uptime() system call could also be accelerated using the shared read-only USYSCALL page.
+The kernel could update the timer tick count in this page, allowing user programs to read it directly without performing a system call.
+This reduces the overhead of switching between user mode and kernel mode.
