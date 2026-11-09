@@ -80,6 +80,18 @@ usertrap(void)
   if(killed(p))
     kexit(-1);
 
+  // sigalarm: on a timer tick, count it; when the interval is up,
+  // save the user's registers and make it return into the handler.
+  if(which_dev == 2 && p->alarm_interval > 0){
+    p->alarm_ticks++;
+    if(p->alarm_ticks >= p->alarm_interval && !p->alarm_running){
+      p->alarm_ticks = 0;
+      p->alarm_running = 1;
+      p->alarm_saved = *p->trapframe;
+      p->trapframe->epc = p->alarm_handler;
+    }
+  }
+
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
     yield();

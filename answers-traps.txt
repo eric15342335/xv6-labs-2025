@@ -1,0 +1,36 @@
+1. Which registers contain arguments to functions? Which register holds 13 in main's call to printf?
+   a0-a7 hold function arguments in order (1st arg -> a0, 2nd -> a1, ...).
+   In printf("%d %d\n", f(8)+1, 13): a0 = address of the format string,
+   a1 = 12, a2 = 13. So 13 is in a2 (`li a2,13` at 0x2c).
+
+2. Where is the call to f in main? Where is the call to g?
+   There is no call to either. The compiler (CFLAGS has -O) inlined them:
+   f(8)+1 = (8+3)+1 was computed at compile time, so main just does `li a1,12`.
+   Inside f, g was inlined too: f's body is just `addiw a0,a0,3` (at 0x1a), no jal to g.
+
+3. At what address is the function printf located?
+   0x724 (main calls it with `jal 724 <printf>` at 0x38).
+
+4. What value is in ra just after the jal to printf in main?
+   0x3c. jal ("jump and link") jumps to printf and saves the address of the
+   next instruction (0x38 + 4 = 0x3c) in ra, so printf can return there.
+   (This build emits `jal`, not `jalr`; the idea is the same.)
+
+5. Output of: unsigned int i = 0x00646c72; printf("H%x Wo%s", 57616, (char *) &i);
+   "He110 World".
+   57616 = 0xe110, printed by %x. RISC-V is little-endian (least significant
+   byte at the lowest address), so i is stored in memory as 72 6c 64 00,
+   which %s reads as 'r' 'l' 'd' '\0' -> "rld".
+
+6. If RISC-V were big-endian, what would i need to be? Change 57616?
+   i = 0x726c6400, so the bytes in memory are still 72 6c 64 00.
+   57616 does not need to change: %x prints the numeric value; the compiler
+   stores the number correctly for whatever byte order the machine uses.
+
+7. printf("x=%d y=%d", 3); what is printed after y=?
+   An unpredictable (garbage) value. printf reads its 3rd argument from
+   register a2, but the caller only set a0 (format) and a1 (3), so it prints
+   whatever happened to be left in a2.
+   (In xv6 this line would not even compile: user.h marks printf with
+   __attribute__((format(printf,1,2))) and the Makefile uses -Wall -Werror,
+   so the missing argument becomes a compile error.)
